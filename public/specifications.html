@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+<script src="static/lib/jquery-3.0.0.min.js"></script>
+
+<style>
+body {
+  font-family: Arial, Helvetica; 
+}
+
+</style>
+
+<script>
+/* Default selections for screen size and resolution */
+var distFromScreen = 600; // measurements in mm
+var cardLen = 85.6; // measurements in mm
+var barLen = 360;
+
+$(window).resize(function() {
+	bar.width = $(window).width() - 20;
+});
+
+/* Clears all radio buttons in the instructions */
+function ClearAll() { 
+	/* clears all 'radio' type buttons to unchecked */
+	Array.prototype.slice.apply(document.querySelectorAll("input[type='radio']")).map(function(e){ e.checked = false });
+	/* rechecks screenSize and viewingDistance to default values */
+	$("#viewingDistance").prop('checked', true);
+}
+
+// The main function for initiating everything
+function specInit() {
+    // Get the canvas by ID
+    bar = document.getElementById('rect');
+    // Set a height and width for the canvas item
+    height = bar.height;
+    width = bar.width;
+
+    bar.width = $(window).width() - 20;
+     
+    // A variable we'll use to draw the actual item
+    draw = bar.getContext('2d');
+ 
+    // We want to redraw every 30ms
+    setInterval(redraw, 30);
+ 
+    // When the user presses a key run a function, when the user stops
+    // run another function. We'll get to these functions later.
+    document.onkeydown = canvasChange;
+    document.onkeyup = canvasStop;
+     
+}
+
+// Wipe the canvas when we want to move the rectangle, then we can redraw it.
+function clearRect(c) {
+    c.clearRect(0, 0, $(window).width(), height);
+}
+ 
+function redraw() {
+    clearRect(draw);
+    draw.fillStyle = 'rgba(0,0,0,0.5)';
+    draw.fillRect( 0, 25, barLen, 50);   
+}
+
+function canvasChange(e) {
+    if(e.keyCode == '37') leftcheck = true;
+    else leftcheck = false;
+     
+     
+    if(e.keyCode == '39') rightcheck = true; 
+    else rightcheck = false;
+     
+    // If the variables are true, increase the left and right movement accordingly. 
+    // We also run the counting function, to keep track of total movement. 
+    if(rightcheck == true) { barLen += 2;};
+    if(leftcheck == true) { if(barLen > 0) {barLen -= 2;}};
+ 
+}
+
+// When the user stops pressing a key, check which key it is and set it to false
+function canvasStop(e) {
+    if(e.keyCode == '37') {
+        leftcheck = false;
+    }
+    if(e.keyCode == '39') {
+        rightcheck = false;
+    }
+ 
+}
+
+function visAngleCalc() {
+    barRes = barLen;
+    
+    var vdValue = $('input[name=VD]:checked').val();
+    if (vdValue != "0") {
+        /* calculate mm value from vdValue */
+        distFromScreen = 10 * (36 + (10 * (vdValue)));
+    }
+    var horzRes = screen.width;
+    var horzLength = (horzRes/barRes) * cardLen;
+    var opplength = horzlength/2;
+    var totalVisAngle = 2 * convertTo("degs", Math.atan(opplength/distFromScreen));
+    var pixelsPerDegree = horzRes/totalVisAngle;
+    return pixelsPerDegree;
+}
+
+</script>
+<body>
+<!-- removed onload="specInit();" -->
+<div id="specifications">
+	<h2>Viewing Condition Information</h2>
+    <hr>
+
+    <p style='text-align: center'><a href='javascript:ClearAll()' id='clearAllButton' class="nav">Clear All</a>
+
+    <div>
+    Please adjust the bar on the screen using the arrow keys to match the length of a gift card or credit/debit card.
+    </div>
+ 
+    <canvas id="rect" height="100">
+    Your browser does not support the HTML5 canvas tag.
+    </canvas>
+
+    <!--
+	<p>Please choose your screen size <b>(in inches)</b> from the options. If your screen size is not one of these options, please provide the size in the other option. Input into "other" as numbers.</p>
+
+	<input id="screenSize" type="radio" name="SS" value="15.6" checked="checked" style="display:none">
+		<p style='text-align: center'>
+			<input type="radio" id="SS11" name="SS" value="11"><label for="SS11"> 11" </label>
+			<input type="radio" id="SS13" name="SS" value="13"><label for="SS13"> 13" </label>
+			<input type="radio" id="SS15" name="SS" value="15"><label for="SS15"> 15" </label>
+			<input type="radio" id="SS21" name="SS" value="21"><label for="SS21"> 21" </label>
+			<input type="radio" id="SS23" name="SS" value="23"><label for="SS23"> 23" </label>
+			<input type="radio" id="SSother" name="SS" value="other"><label for="SSother"> Other</label>
+				<input id="inputother" type="text" onchange="ChangeRadioOther()"/>
+		</p>
+	-->
+
+	<p>Please choose your current viewing condition from the diagram. Do <b>NOT</b> select an option if you do not know.</p>
+
+	<input id="viewingDistance" type="radio" name="VD" value="0" checked="checked" style="display:none">
+
+	<table align="center" style="max-width:800px">
+	    <tr>
+	        <td>
+	        	<label for="VD18">
+	            	<img src="static/images/VD18.png" class="VDanswer" style="max-width:100%; height:auto; width:auto">
+	            </label>
+	        </td>
+	        <td>
+	        	<label for="VD22">
+	            	<img src="static/images/VD22.png" class="VDanswer" style="max-width:100%; height:auto; width:auto">
+	            </label>
+	        </td>
+	        <td>
+	        	<label for="VD26">
+	        		<img src="static/images/VD26.png" class="VDanswer" style="max-width:100%; height:auto; width:auto">
+	        	</label>
+	        </td>
+	    </tr>
+	    <tr>
+	        <td style="text-align:center">
+	            <input type="radio" id="VD18" name="VD" value="1">
+	        </td>
+	        <td style="text-align:center">
+	            <input type="radio" id="VD22" name="VD" value="2">
+	        </td>
+	        <td style="text-align:center">
+	            <input type="radio" id="VD26" name="VD" value="3">
+	        </td>
+	    </tr>
+	</table>
+
+    <hr>
+
+	<div class="instructionsnav">
+        <div class="row">
+            <div>
+                <button type="button" id="specsBack" value="specsBack" class="nav" onClick="SpecsBack();">
+                    Back
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="instructionsnav">
+        <div class="row">
+            <div>
+                <button type="button" id="specsNext" value="specsNext" class="nav" onClick="ApplySpecs();">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+     
+</body>
+</html>

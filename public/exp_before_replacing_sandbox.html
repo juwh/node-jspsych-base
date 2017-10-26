@@ -1,0 +1,1620 @@
+<html>
+<!-- Title seen on tabs -->
+<title>TongLab: Experiment</title>
+
+<!-- Icon seen on tabs -->
+<link rel="icon" type="image/gif" href="static/favicon.gif">
+
+<!-- Background color chosen to match window backgrounds
+ and element background colors -->
+<body style="background-color:rgb(128,128,128);margin:0">
+<head></head>
+
+<!-- Loads all associated libraries and scripts: noteable
+ include jQuery, jQuery Rotate, and TimTurkTools.js -->
+<script src="static/lib/jquery-3.0.0.min.js"></script>
+<script src="static/lib/jQueryRotate.js"></script>
+<script src="static/lib/seedrandom.js"></script>
+<!-- TimTurkTools expanded to allow extraction of HitId
+ and statusIndex -->
+<script src="static/lib/TimTurkTools.js"></script>
+<script src="static/js/utils.js"></script>
+
+<!-- Loads all associated style sheets (CSS) -->
+<link rel="stylesheet" type="text/css" href="static/css/experiment.css">
+<link rel="stylesheet" type="text/css" href="static/css/showTrial.css">
+
+<style>
+.page {
+/*
+  padding:20px; 
+  border:1px dashed black; 
+  background-color: lightgray;
+*/
+  max-width: 600px; 
+  margin: 0 auto; 
+  margin-top: 30px;
+}
+
+#specifications {
+  display: none;
+}
+
+#questionnaire {
+  display: none;
+}
+
+#debrief {
+  /*
+  padding:20px; 
+  border:1px dashed black; 
+  background-color: lightgray;
+  */
+  max-width: 600px; 
+  margin: 0 auto; 
+  margin-top: 30px; 
+  display: none;
+}
+
+/* Continuous report screen parameters */
+#continuousReport {
+	/* Encompass entire window width and 
+	adjust to size changes */
+	width: 100%;
+	/* Higher percentage for max height expands 
+	vertical size and introduces scrolling */
+	max-height: 80%;
+	/* rgb chosen as the same color background as
+	the gabor and bar elements */
+	background: rgb(128,128,128);
+	margin: 40px auto;
+	/* relative positioning as the window is 
+	within 'body' */
+	position: relative;
+	display: none;
+}
+
+/* Continuous stimulus parameters */
+#continuousStimulus {
+	/* absolute positions element within 
+	continuousReport */
+	position: absolute; 
+	display: none;
+}
+
+/* Cue selection in continuousReport parameters */
+#targetSelect {
+	/* absolute positions element within 
+	continuousReport */
+	position: absolute;
+}
+
+#motorPrac {
+	/* absolute positions element within 
+	continuousReport */
+	position: absolute;
+	display: none;
+}
+
+.botText {
+	width: 100%;
+ 	text-align: center;
+	top: 400px;
+  	left: 0px;
+  	font-weight: bold;
+  	font-size: 14pt;
+}
+
+#feedback {
+	position: absolute;
+  	display: none;
+}
+
+#average {
+	position: absolute;
+  	display: none;
+}
+
+#pressKeyShow {
+	position: absolute;
+  	display: none;
+}
+
+#pressKeyCont {
+	position: absolute;
+  	display: none;
+}
+
+#pressKeySub {
+	position: absolute;
+  	display: none;
+}
+
+.viewD {
+	display: none;
+}
+
+
+</style>
+
+<script>
+/* --------------------------------------------------------------------------------------- */
+/* ----------------------------------- Major Variables ----------------------------------- */
+/* --------------------------------------------------------------------------------------- */
+
+console.log("Version 1.2.0");
+/* Options: */
+/* Display statistics seem to suggest a common screen resolution of 
+1366x768 (16:9), 15.6 inch display (343mm by 193mm), 
+600mm distance from center of screen */
+/* experiment name used in saved data folder name */
+var experimentName = 'pilot';
+/* get Turk identifiers from URL */
+var workerId = GetWorkerId();
+var hitId = GetHitId();
+var assignmentId = GetAssignmentId();
+/* tags used to keep out external interference of logging files */
+var tags = {
+    	'id': workerId,
+    	'experimentName': experimentName,
+    	'hitId': hitId,
+    	'assignmentId': assignmentId
+    }; 
+var statusIndex = -1;
+var statusStr;
+/* display time of stimulus array */
+var displayTime = 200;
+/* length of retention period */
+var isiTime = 1000;
+/* length of time before stimulus 
+display after response */
+var preShowTime = 1500;
+/* length of time of cue display 
+before response controls */
+var reportShowTime = 500;
+/* number of trials in actual run, this should 
+match the number within the trial sequence files */
+var numTrials_mPrac = 5;
+var numTrials_prac = 10;
+var numTrials = 106;
+/* set size numbers placed inside */
+var setSize = [1, 2, 3, 6];
+/* set number of set sizes to variable */
+var numSetSize = setSize.length;
+/* create new Date object to get a time based seed */
+var randTime = new Date();
+/* assign seed value to possibly be 
+recorded in data file */
+var randSeed = randTime.getTime();
+/* startTime variable for recording session times */
+var startExpTime;
+var motorPrac = true;
+var memPrac = true;
+/* determine whether user completed the task
+ and should be listed as such on the server */
+var submitted = false;
+
+/* Seed selection based on current date (randTime.getTime()) */
+Math.seedrandom(randSeed);
+
+/* Pregenerated trial arrays */
+var mPracticeTrials = [];
+var memPracticeTrials = [];
+/* contains practice trial information */
+var practiceTrials = [];
+/* contains processed trial condition information */
+var genTrials = [];
+/* contains genTrials and practiceTrials */
+var totalTrials = [];
+var testSeq = ['#test2', '#test3', '#actual'];
+
+var mPracPerf = [];
+var blockPerf = [];
+
+/* Pointers for where we are in the experiment: */
+var currentTrial_mPrac = -1;
+var currentTrial = -1;
+var currentBlock = 0;
+
+/* Default selections for screen size and resolution */
+var horzRes = screen.width;
+var horzLength = 343; // measurements in mm
+var distFromScreen = 600; // measurements in mm
+var centerX = ($(window).width())/2;
+var centerY = ($(window).height())/2;
+
+/* Pixels per visual angle degree and target image dimension calculations */
+var oppLength = horzLength/2;
+var totalVisAngle = 2 * convertTo("degs", Math.atan(oppLength/distFromScreen));
+var pixelsPerDegree = horzRes/totalVisAngle;
+var itemRadius = Math.floor(pixelsPerDegree);
+var itemDim = 2 * itemRadius;
+
+/* Target location within eccentricity values */
+/* minimum angle between element centers to avoid overlap */
+var minAngle_centers = 38;
+/* eccentricity distance visual angle */
+var eccenAngle = 4;
+var textAngle = 1;
+/* visual angle conversion */
+var eccenDist = eccenAngle * pixelsPerDegree;
+
+/* Target canvas circle offset used 
+with cue selection circle */
+var circMargin = 2;
+
+/* Fixation visual angle degrees */
+var outCircle = 0.2432;
+var outLine = 0.0541;
+var inCircle = 0.0541;
+
+/* Unit conversions */
+var inchTomm = 25.4;
+
+/* --------------------------------------------------------------------------------------- */
+/* ------------------------------------ Window Change ------------------------------------ */
+/* --------------------------------------------------------------------------------------- */
+
+/* lines adjust element x,y locations upon 
+window resize event if the experiment has started,
+currentTrial != -1 */
+$(window).resize(function() {
+	/* if the experiment hasn't started, 
+	currentTrial == -1 and startExpTime == null, 
+	locations of stimulus arrays, continuous stimulus, 
+	continuousReport and showTrial window sizes 
+	can not be adjusted */
+	if (startExpTime != null) {
+		/* adjust center x,y values based on new window resolution */
+		centerX = $(window).width()/2, centerY = $(window).height()/2;
+		/* adjust continuousReport window margin to be centered */
+	  	$("#continuousReport").css("margin-top", (($(window).height())/2) - ($("#continuousReport").height())/2);
+	  	/* adjust showTrial window margin to be centered */
+	  	$("#showTrial").css("margin-top", (($(window).height())/2) - ($("#showTrial").height())/2);
+	  	/* adjust continuousStimulus element left,top values to be centered */
+	  	$("#continuousStimulus").css("top", ($("#continuousReport").height() - itemDim)/2);
+		$("#continuousStimulus").css("left", ($("#continuousReport").width() - itemDim)/2);
+		$(".botText").css("top", centerY + (pixelsPerDegree * textAngle));
+		/* move array elements and cue by changing top,left values */
+	  	if(!motorPrac) {
+	  		AdjustElements(totalTrials[currentBlock][currentTrial]);
+	  	} else {
+	  		mPracSet(mPracticeTrials[currentTrial_mPrac]);
+	  	}
+	}
+});
+
+/* function to run before user reloads,
+closes, or directs out from experiment */
+$(window).on('beforeunload', function(){
+    return 'Are you sure you want to leave? You may not be able to restart the assignment and have to return the HIT.';
+});
+
+/* if user chooses to leave the assignment, server
+is notified to record the participant as incomplete */
+$(window).on('unload', function(){
+	/* does not overwrite completion upon unload */
+	if (!submitted){
+		/* calls script file to run on server */
+	    $.ajax({
+	    	type: 'POST',
+	    	async: false,
+	    	url: 'https://mturk.psy.vanderbilt.edu/cgi-bin/incompLists.pl',
+	    	data: tags
+	    });
+	}
+    //logout();
+});
+
+/* --------------------------------------------------------------------------------------- */
+/* ------------------------------------- Subject Info ------------------------------------ */
+/* --------------------------------------------------------------------------------------- */
+
+function ChangeAgeInput() {
+	var other= document.getElementById("age");
+	other.value=document.getElementById("ageInput").value;
+}
+
+/* --------------------------------------------------------------------------------------- */
+/* ------------------------------------ Specifications ----------------------------------- */
+/* --------------------------------------------------------------------------------------- */
+
+/* Default selections for screen size and resolution */
+var distFromScreen = 600; // measurements in mm
+var cardLen = 85.6; // measurements in mm
+var barLen = 360;
+
+function SpecsScreen() {
+	$('#subject').hide();
+	specInit();
+	$('#specifications').show();
+}
+
+function SpecsBack() {
+	$('#specifications').hide();
+	$('#subject').show();
+}
+
+function CardNext() {
+	$('.card').hide();
+	$('.viewD').show();
+}
+
+function CardBack() {
+	$('.viewD').hide();
+	$('.card').show();
+}
+
+function DebriefScreen() {
+	$('#questionnaire').hide();
+	$('#debrief').show();
+}
+
+/* Clears all radio buttons in the instructions */
+function ClearAll() { 
+	/* clears all 'radio' type buttons to unchecked */
+	Array.prototype.slice.apply(document.querySelectorAll("input[type='radio']")).map(function(e){ e.checked = false });
+	/* rechecks screenSize and viewingDistance to default values */
+	$("#viewingDistance").prop('checked', true);
+}
+
+// The main function for initiating everything
+function specInit() {
+    // Get the canvas by ID
+    bar = document.getElementById('rect');
+    // Set a height and width for the canvas item
+    height = bar.height;
+    width = bar.width;
+
+    bar.width = 600;
+     
+    // A variable we'll use to draw the actual item
+    draw = bar.getContext('2d');
+ 
+    // We want to redraw every 30ms
+    setInterval(redraw, 30);
+ 
+    // When the user presses a key run a function, when the user stops
+    // run another function. We'll get to these functions later.
+    document.onkeydown = canvasChange;
+    document.onkeyup = canvasStop;
+     
+}
+
+// Wipe the canvas when we want to move the rectangle, then we can redraw it.
+function clearRect(c) {
+    c.clearRect(0, 0, bar.width, height);
+}
+ 
+function redraw() {
+    clearRect(draw);
+    draw.fillStyle = 'rgba(0,0,0,0.75)';
+    draw.fillRect( 0, 25, barLen, 50);   
+}
+
+function canvasChange(e) {
+    if(e.keyCode == '37') leftcheck = true;
+    else leftcheck = false;
+     
+     
+    if(e.keyCode == '39') rightcheck = true; 
+    else rightcheck = false;
+     
+    // If the variables are true, increase the left and right movement accordingly. 
+    // We also run the counting function, to keep track of total movement. 
+    if(rightcheck == true) { barLen += 2;};
+    if(leftcheck == true) { if(barLen > 0) {barLen -= 2;}};
+ 
+}
+
+// When the user stops pressing a key, check which key it is and set it to false
+function canvasStop(e) {
+    if(e.keyCode == '37') {
+        leftcheck = false;
+    }
+    if(e.keyCode == '39') {
+        rightcheck = false;
+    }
+ 
+}
+
+function visAngleCalc() {
+    barRes = barLen;
+    
+    var vdValue = $('input[name=VD]:checked').val();
+    if (vdValue != "0") {
+        /* calculate mm value from vdValue */
+        distFromScreen = 10 * (36 + (10 * (vdValue)));
+    }
+    var horzRes = screen.width;
+    var horzLength = (horzRes/barRes) * cardLen;
+    var oppLength = horzLength/2;
+    var totalVisAngle = 2 * convertTo("degs", Math.atan(oppLength/distFromScreen));
+    var pixelsPerDegree = horzRes/totalVisAngle;
+    return pixelsPerDegree;
+}
+
+/* Apply new environment conditions to item dimensions and fixation */
+function UpdateElements() {
+	pixelsPerDegree = visAngleCalc();
+	itemRadius = Math.floor(pixelsPerDegree);
+	itemDim = 2 * itemRadius;
+	eccenDist = eccenAngle * pixelsPerDegree;
+	$(".gabor").css("width", itemDim);
+
+	var c = document.getElementById("fixationShow");
+	var d = document.getElementById("fixationCont");
+	DrawFixation(c);
+	DrawFixation(d);
+
+	console.log(centerY);
+	console.log((pixelsPerDegree * textAngle));
+	console.log(centerY + (pixelsPerDegree * textAngle));
+	$(".botText").css("top", centerY + (pixelsPerDegree * textAngle));
+	$(".fixation").css("margin-top", -itemRadius);
+	$(".fixation").css("margin-left", -itemRadius);
+	$(".fixation").show();
+}
+
+/* function in order to combat async processing with AJAX read request,
+additional time between pressing 'Apply' and 'Start Experiment' will
+hopefully allow the trial sequence file to load and process fully */
+function ApplySpecs() {
+	/* tags used to keep out external interference of logging files */
+	UpdateElements();
+	StartList();
+	memPracticeGen();
+	OpenParticipants();
+	ReadConditions();
+	totalTrials = [memPracticeTrials, practiceTrials, genTrials];
+	$('#specifications').hide();
+	$('#test1').show();
+}
+
+/* --------------------------------------------------------------------------------------- */
+/* ------------------------------------ Motor Practice ----------------------------------- */
+/* --------------------------------------------------------------------------------------- */
+
+var mPracCycles = 0;
+
+function MotorPractice() {
+	$('#test1').hide();
+	mPracticeTrials = mPracticeGen();
+	mPracNext();
+}
+
+function mPracticeGen() {
+
+	var numTargets = 1;
+	var prac = 1;
+	var stimtype = 1;
+
+	var genStruct = [];
+	var itemOrients = [];
+	var curAngles = [];
+	var curCoordinates = [];
+	var target;
+	var startAngle;
+
+	for (var i=0; i<numTrials_mPrac; i++) {
+		startAngle = Math.floor(Math.random()*360);
+	    itemOrients.push(Math.floor(Math.random()*360));
+	    curAngles = randSpacings(numTargets, startAngle);
+	    curCoordinates = toCoordinates(curAngles);
+	    target = Math.floor(Math.random() * numTargets);
+	    genStruct.push({'prac': prac,
+						'trial': i, 
+		                'stimtype': stimtype, 
+		                'setSize': numTargets,
+						'targetIndex': target,
+						'items': itemOrients,
+						'randAngles': curAngles,
+						'randSpacings': curCoordinates
+					});
+	    itemOrients = [];
+	    curCoordinates = [];
+	}
+	genStruct = Shuffle(genStruct);
+	return genStruct;
+}
+
+function mPracSet(trialStruct) {
+	if (trialStruct.stimtype == 1) {
+		ChangeToBar();
+	}
+	if (trialStruct.stimtype == 2) {
+		ChangeToGabor();
+	}
+	$('#motorPrac').css("top", $("#continuousReport").height()/2 - trialStruct.randSpacings[0].y - itemDim);
+	$('#motorPrac').css("left", $(window).width()/2 + trialStruct.randSpacings[0].x);
+	ccwRotate(trialStruct.items[0], '#motorPrac');
+}
+
+function mPracNext() {
+	currentTrial_mPrac++;
+	$("#motorPrac").hide();
+	$("#continuousReport").show();
+  	if (currentTrial_mPrac>=numTrials_mPrac) {
+    	mPracticeFeedbackReport();
+  	} else {
+  		mPracSet(mPracticeTrials[currentTrial_mPrac]);
+  		PracProgress(mPracticeTrials[currentTrial_mPrac]);
+  	}
+}
+
+function PracProgress(trialStruct) {
+
+  	if(currentTrial_mPrac == 0) {
+  		$("#pressKeyCont").show();
+  		$(document).bind('keyup.startTrial', 'space', function(e) { 
+  			$("#pressKeyCont").hide();
+	    	$(document).unbind('keyup.startTrial');
+	    	$('#motorPrac').show();
+	    	ShowContinuousReport(trialStruct);
+    	});
+  	} else {
+  		$('#motorPrac').show();
+  		ShowContinuousReport(trialStruct);
+  	}
+}
+
+function mPracticeFeedbackReport() {
+	var perfSum = 0;
+	var performanceMin = 95;
+	var performance;
+	mPracCycles++;
+	for (var i = 0; i<mPracPerf.length; i++) {
+		perfSum += mPracPerf[i];
+	}
+	performance = perfSum/mPracPerf.length;
+	console.log(performance);
+	if (performance > performanceMin) {
+		$('#average').html("Awesome!<br>Average Accuracy: " + Math.round(performance) + " percent<br>You may now move on to the next test.<br><br>Press space to continue.");
+		$('#average').show();
+		$(document).bind('keyup.startTrial', 'space', function(e) { 
+	    	$(document).unbind('keyup.startTrial');
+	    	motorPrac = false;
+	    	$("#average").hide();
+			$("#continuousReport").hide();
+	    	$("#test2").show();
+    	});
+	} else {
+		$('#average').html("Average Accuracy: " + Math.round(performance) + " percent (average must be at least 95%)<br>If you find that the task is too difficult, please press the <b>Return HIT</b> button.<br><br>Press space to try again.");
+		$('#average').show();
+		$(document).bind('keyup.repTrial', 'space', function(e) { 
+	    	$(document).unbind('keyup.repTrial');
+	    	$("#average").hide();
+			currentTrial_mPrac = -1;
+			mPracPerf = [];
+			mPracticeTrials = [];
+			MotorPractice();
+		});
+	}
+}
+
+/* --------------------------------------------------------------------------------------- */
+/* --------------------------------- Memory Practice 2 ----------------------------------- */
+/* --------------------------------------------------------------------------------------- */
+
+function memPracticeGen() {
+
+	var memPracNumTrials = 5;
+	var test2SS = 2;
+	var stimtype = 1;
+	var startAngle;
+	var itemOrients = [];
+	var curAngles = [];
+	var curCoordinates = [];
+	var targetIndex;
+
+	for (var j = 0; j<memPracNumTrials; j++) {
+		startAngle = Math.floor(Math.random()*360);
+	    for (var k=0; k<test2SS; k++) {
+	        itemOrients.push(Math.floor(Math.random()*360));
+	    }
+	    curAngles = randSpacings(test2SS, startAngle);
+	    curCoordinates = toCoordinates(curAngles);
+	    targetIndex = Math.floor(Math.random() * test2SS);
+	    memPracticeTrials.push({'prac': 1,
+					'trial': j+1, 
+	                'stimtype': 1, 
+	                'setSize': test2SS,
+					'targetIndex': targetIndex,
+					'items': itemOrients,
+					'randAngles': curAngles,
+					'randSpacings': curCoordinates});
+	    itemOrients = [];
+	    curCoordinates = [];
+	}
+	memPracticeTrials = Shuffle(memPracticeTrials);
+}
+
+/* --------------------------------------------------------------------------------------- */
+/* ------------------------------------ Main Exp Setup ----------------------------------- */
+/* --------------------------------------------------------------------------------------- */
+
+function hideInstruct() {
+	$("#test2").hide();
+	NextTrial();
+}
+
+function showInstruct() {
+	blockPerf = [];
+	$("#average").hide ();
+	$(testSeq[currentBlock + 1]).show();
+}
+
+function OpenStatus() {
+	var listRequest = new XMLHttpRequest();
+	listRequest.onreadystatechange = function() {
+		if((listRequest.readyState === 4) && (listRequest.status === 200)) {
+			statusStr = JSON.parse(listRequest.responseText);
+			for (var i = 0; i < statusStr.length; i++) {
+				if (statusStr[i] == 0) {
+					statusIndex = i;
+					break;
+				}
+			}
+			$("#button").show();
+			if (statusIndex == -1) {
+				$("#accepted").hide();
+				$("#preview").hide();
+				$("#error").hide();
+				$("#button").hide();
+				$("#full").show();
+			}
+		}
+	}
+	listRequest.open('GET', 'conditions/status.txt', false);
+	listRequest.send();
+}
+
+function OpenParticipants() {
+	var repeat;
+	var partRequest = new XMLHttpRequest();
+	partRequest.onreadystatechange = function() {
+		if((partRequest.readyState === 4) && (partRequest.status === 200)) {
+			partStr = JSON.parse(partRequest.responseText);
+			for (var i = 0; i < partStr.length; i++) {
+				if (partStr[i][0] == workerId) {
+					statusIndex = i;
+					repeat = true;
+					$("#button").show();
+					break;
+				}
+			}
+			if (!repeat) {
+				OpenStatus();
+			}
+		}
+	}
+	partRequest.open('GET', 'conditions/participants.txt', false);
+	partRequest.send();
+}
+
+function AdjustElements(trialStruct) {
+	for (var i=0; i<trialStruct.setSize; i++) {
+		$('#item' + (i+1)).css("top", $("#showTrial").height()/2 - trialStruct.randSpacings[i].y - itemDim);
+		$('#item' + (i+1)).css("left", $(window).width()/2 + trialStruct.randSpacings[i].x);
+	}
+	$("#targetSelect").css("left", $(window).width()/2 + trialStruct.randSpacings[trialStruct.targetIndex].x - circMargin);
+	$("#targetSelect").css("top", $("#showTrial").height()/2 - trialStruct.randSpacings[trialStruct.targetIndex].y - itemDim - circMargin);
+}
+
+function DrawFixation(element) {
+	element.width = itemDim;
+	element.height = itemDim;
+	var ctx = element.getContext("2d");
+	ctx.beginPath();
+	//ctx.arc(itemRadius,itemRadius,eccenDist,0,2*Math.PI);
+	ctx.arc(itemRadius,itemRadius,outCircle * pixelsPerDegree,0,2*Math.PI);
+	//ctx.lineWidth = outLine * pixelsPerDegree;
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(itemRadius,itemRadius,inCircle * pixelsPerDegree,0,2*Math.PI);
+	ctx.fill();
+	ctx.stroke();
+}
+
+function ChangeToBar() {
+	$(".gabor").attr('src', "static/images/bar.png");
+}
+
+function ChangeToGabor() {
+	$(".gabor").attr('src', "static/images/gaborCont.png");
+}
+
+function ReadConditions() {
+	var fileNum;
+	var subjID = statusIndex + 1;
+	var statusIndexStr = pad(subjID, 3);
+	console.log(statusIndexStr);
+
+	var pracfileLoc = 'conditions/CounterBalance_prac/bar_SS6_10display_subj' + statusIndexStr + '.txt';
+	console.log(pracfileLoc);
+	var pracDataRequest = new XMLHttpRequest();
+	pracDataRequest.onreadystatechange = function() {
+		if((pracDataRequest.readyState === 4) && (pracDataRequest.status === 200)) {
+			conditions = pracDataRequest.responseText;
+			ProcessConditions(practiceTrials, numTrials_prac);
+		}
+	}
+	pracDataRequest.open('GET', pracfileLoc, true);
+	pracDataRequest.send();
+
+	var fileLoc = 'conditions/CounterBalance/bar_SS6_96display_subj' + statusIndexStr + '.txt';
+	var dataRequest = new XMLHttpRequest();
+	dataRequest.onreadystatechange = function() {
+		if((dataRequest.readyState === 4) && (dataRequest.status === 200)) {
+			conditions = dataRequest.responseText;
+			ProcessConditions(genTrials, numTrials);
+		}
+	}
+	dataRequest.open('GET', fileLoc, true);
+	dataRequest.send();
+}
+
+function ProcessConditions(trialStruct, structNum) {
+	var subjID;
+	var prac;
+	var trial;
+	var stimtype;
+	var setsize;
+	var displayID;
+	var target;
+	var itemOrients = [];
+	var curAngles = [];
+	var curCoordinates = [];
+
+	conditionStream = conditions.split(/\s+/);
+	console.log(conditionStream);
+	numValuesPerTrial = (conditionStream.length - 1)/structNum
+	for (var i = 0; i < structNum; i++) {
+		subjID = parseFloat(conditionStream[i * numValuesPerTrial]);
+		prac = parseFloat(conditionStream[i * numValuesPerTrial + 1]);
+		trial = parseFloat(conditionStream[i * numValuesPerTrial + 2]);
+		stimtype = parseFloat(conditionStream[i * numValuesPerTrial + 3])
+		setsize = parseFloat(conditionStream[i * numValuesPerTrial + 4]);
+		displayID = parseFloat(conditionStream[i * numValuesPerTrial + 5]);
+		target = parseFloat(conditionStream[i * numValuesPerTrial + 6]) - 1;
+		for (var j = 0; j < setsize; j++) {
+			itemOrients[j] = parseFloat(conditionStream[(i * numValuesPerTrial) + j + 7]);
+			curAngles[j] = parseFloat(conditionStream[(i * numValuesPerTrial) + j + 13]);
+		}
+		curCoordinates = toCoordinates(curAngles);
+		trialStruct.push({'subjID': subjID,
+						'prac': prac,
+						'trial': trial, 
+		                'stimtype': stimtype, 
+		                'setSize': setsize,
+		                'displayID': displayID,
+						'targetIndex': target,
+						'items': itemOrients,
+						'randAngles': curAngles,
+						'randSpacings': curCoordinates
+					});
+		itemOrients = [];
+		curAngles = [];
+		curCoordinates = [];
+	}
+}
+
+
+/* Normalize random spacing values to sum to available space */
+function randSpacings(nItems, startAngle) {
+	var curSpacings = [];
+	var curCoordinates = [];
+	var availableSpace;
+	var curRandSum = 0;
+			
+	availableSpace = 360 - (minAngle_centers * nItems);
+	for(i = 0; i<nItems; i++) {
+		curSpacings.push(Math.random());
+		curRandSum += curSpacings[i];
+	}
+	curSpacings[0] = startAngle + minAngle_centers + (curSpacings[0]/curRandSum) * availableSpace;
+	for(j = 1; j<nItems; j++) {
+		curSpacings[j] = curSpacings[j - 1] + minAngle_centers + (curSpacings[j]/curRandSum) * availableSpace;
+	}
+	return curSpacings;
+}
+
+/* Convert spacing angles to x, y coordinates for element placement */
+function toCoordinates(angleSpacings) {
+	var curCoordinates = [];
+	angleSpacings = wrap(angleSpacings);
+	for(i = 0; i<angleSpacings.length; i++) {
+		coordX = Math.floor(Math.cos(convertTo("rads", angleSpacings[i])) * eccenDist) - itemRadius;
+		coordY = Math.floor(Math.sin(convertTo("rads", angleSpacings[i])) * eccenDist) - itemRadius;
+		curCoordinates.push({'x': coordX,
+		 					'y': coordY});
+	}
+	return curCoordinates;
+}
+
+/* Start the experiment. Show trials for either bars or gratings first (at random), practice right before testing */
+function StartExperiment() {
+	if (IsOnTurk() && IsTurkPreview()) {
+	  	alert("Please accept the HIT before continuing.");
+	  	return false;
+	}
+	startExpTime = new Date();
+	$('.test').hide();
+  	$("#showTrial").height($(window).height());
+  	$("#continuousReport").height($(window).height());
+  	$("#showTrial").css("margin-top", (($(window).height())/2) - ($("#showTrial").height())/2);
+  	$("#continuousReport").css("margin-top", (($(window).height())/2) - ($("#continuousReport").height())/2);
+	MotorPractice();
+}
+
+/* Show the next trial or show the done screen if they are finished: */
+function NextTrial() {
+	currentTrial++;
+	console.log(totalTrials);
+	console.log(totalTrials[currentBlock].length);
+  	if (currentTrial>=totalTrials[currentBlock].length) {
+    	if (currentBlock==totalTrials.length-1) {
+	    	$('#showTrial').hide();
+	      	Done();
+	      	return;
+    	} else {
+      		currentTrial = 0;
+      		currentBlock++;
+      		$(testSeq[currentBlock]).hide();
+			console.log(testSeq[currentBlock]);
+    	}
+  	}
+  	$('#targetSelect').show();
+	$('#elements').hide();
+	$('#showTrial').show();
+  	SetItems(totalTrials[currentBlock][currentTrial]);
+  	TrialProgress(totalTrials[currentBlock][currentTrial]);
+}
+
+/* Places targets within an eccentricity with 
+randomized spacing and orientations */
+function SetItems(trialStruct) {
+	if (trialStruct.stimtype == 1) {
+		ChangeToBar();
+	}
+	if (trialStruct.stimtype == 2) {
+		ChangeToGabor();
+	}
+	for (var i=0; i<trialStruct.setSize; i++) {
+		placeGabor('#item' + (i+1), i, trialStruct);
+		$('#item' + (i+1)).show();
+	}
+}
+
+function ccwRotate(radians, item) {
+	$(item).rotate(-radians);
+}
+
+function placeGabor(item, curTarget, trialStruct) {
+	$(item).css("top", $("#showTrial").height()/2 - trialStruct.randSpacings[curTarget].y - itemDim);
+	$(item).css("left", $(window).width()/2 + trialStruct.randSpacings[curTarget].x);
+	ccwRotate(trialStruct.items[curTarget], item);
+}
+
+function TrialProgress(trialStruct) {
+
+  	if(currentTrial == 0) {
+  		$('#pressKeyShow').show();
+  		$(document).bind('keyup.startTrial', 'space', function(e) { 
+  			$('#pressKeyShow').hide();
+	    	$(document).unbind('keyup.startTrial');
+	    	ShowTrial(trialStruct);
+    	});
+  	} else {
+  		ShowTrial(trialStruct);
+  	}
+}
+
+/* Basic trial structure: Show the stimuli for this trial; 
+  then delay for fixed ISI; then call ShowContinuousReport */
+function ShowTrial(trialStruct) {
+	document.body.style.cursor = 'none';
+   	setTimeout(function() {
+       	$('#elements').show();
+       	setTimeout(function() { 
+           	$('#elements').hide();
+           	setTimeout(function() {
+           		$('#showTrial').hide();
+           		$('.array').hide();
+           		ShowContinuousReport(trialStruct);
+           	}, isiTime);
+       	}, displayTime);
+   	}, preShowTime);
+}
+
+/* Always track the mouse */
+var mouseX, mouseY;
+$(function() {
+  	$(document).bind('mousemove.overall', function(e) {
+    	mouseX = e.pageX;
+    	mouseY = e.pageY;
+  	});
+});
+
+function ReportSelection(trialStruct) {
+	var targetIndex = trialStruct.targetIndex;
+	console.log(targetIndex);
+	console.log(trialStruct.randSpacings[targetIndex]);
+	$("#targetSelect").width(itemDim + 2 * circMargin);
+	$("#targetSelect").height(itemDim + 2 * circMargin);
+	$("#targetSelect").css("left", $(window).width()/2 + trialStruct.randSpacings[targetIndex].x - circMargin);
+	$("#targetSelect").css("top", $("#showTrial").height()/2 - trialStruct.randSpacings[targetIndex].y - itemDim - circMargin);
+
+	var c = document.getElementById("circSelect");
+	c.width = itemDim + 2 * circMargin;
+	c.height = itemDim + 2 * circMargin;
+	var ctx = c.getContext("2d");
+
+	ctx.beginPath();
+	ctx.arc(c.width/2,c.height/2,itemRadius,0,2*Math.PI);
+	//ctx.strokeStyle = '#FFFFFF';
+	ctx.stroke();
+}
+
+/* Handle continuous report for either bar or grating response by using a single
+   image with jQuery rotation based on mouse coordinate angle */
+function ShowContinuousReport(trialStruct) {
+  	var angleDeg = 0;
+  	var randAdj = 360 * Math.random();
+  	// console.log(randAdj);
+  	var curError = 360;
+  	var startTime = new Date();
+
+  	if (!motorPrac) {
+  		ReportSelection(trialStruct);
+  	}
+
+  	setTimeout(function() {
+  		document.body.style.cursor = 'auto';
+  		$("#continuousStimulus").show();
+  		if (motorPrac) {
+	  		$("#pressKeySub").show();
+	  	}
+  		$(document).bind('keyup.curTrial', 'space', function(e) {
+			var answer = wrap(360 - (angleDeg + randAdj));
+			trialStruct.reportedAngle = Math.round(answer);
+	    	trialStruct.rt = (new Date()) - startTime;
+		    $(document).unbind('keyup.curTrial');
+		    $(document).unbind('mousemove.curTrial');
+		    
+		    var difference = Math.abs(trialStruct.items[trialStruct.targetIndex] - trialStruct.reportedAngle);
+		    var oriDiff = Math.abs((difference%180)-90);
+		    var percentCorrect = (oriDiff/90) * 100;
+		    console.log(percentCorrect);
+
+		    $("#continuousStimulus").hide();
+		    if (motorPrac) {
+		  		$("#pressKeySub").hide();
+		  	}
+		    if (motorPrac) {
+		    	$("#motorPrac").hide();
+		    	mPracPerf.push(percentCorrect);
+		    	$('#feedback').html("Accuracy: " + Math.round(percentCorrect) + " percent (average must be at least 95%)<br><br>Press space to continue.");
+		    	$('#feedback').show();
+		    	$(document).bind('keyup.feedback', 'space', function(e) {
+		    		$("#continuousReport").hide();
+		    		$('#feedback').hide();
+		    		$(document).unbind('keyup.feedback');
+		    		mPracNext();
+		    	});
+		    } else {
+		    	$("#continuousReport").hide();
+		    	blockPerf.push(percentCorrect);
+		    	FeedbackReport(trialStruct);
+		    }
+	     	
+		});
+  	}, reportShowTime);
+
+	$(document).bind('mousemove.curTrial', function(e) {
+		var initOffset = $('#continuousReport').offset(); 
+	   	var relX = e.pageX - centerX;
+	  	var relY = e.pageY - centerY;
+		var curAngle = Math.atan2(relY,relX);
+		
+		angleDeg = (curAngle / Math.PI * 180.0);
+	    angleDeg = (angleDeg < 0) ? angleDeg+360:angleDeg;
+	    
+	    $("#continuousStimulus").css("top", ($("#continuousReport").height() - itemDim)/2);
+	    $("#continuousStimulus").css("left", ($("#continuousReport").width() - itemDim)/2);
+		$("#gaborCont").rotate(angleDeg + randAdj);
+	});
+
+	$("#continuousReport").show();
+	e = $.Event('mousemove');
+	e.pageX = mouseX;
+	e.pageY = mouseY;
+	$(document).trigger(e);
+}
+
+function FeedbackReport(trialStruct) {
+
+	$("#targetSelect").hide();
+	$("#continuousReport").show();
+  	if(currentTrial == totalTrials[currentBlock].length - 1) {
+  		var perfSum = 0;
+  		var performanceMin = 80;
+		var performance;
+		for (var i = 0; i<totalTrials[currentBlock].length; i++) {
+			perfSum += blockPerf[i];
+		}
+		performance = perfSum/totalTrials[currentBlock].length;
+		console.log(performance);
+  		if (memPrac) {
+  			if (performance > performanceMin) {
+				$('#average').html("Awesome!<br>Average Accuracy: " + Math.round(performance) + " percent<br>You may now move on to the next test.<br><br>Press space to continue.");
+				$('#average').show();
+				$(document).bind('keyup.startTrial', 'space', function(e) { 
+			    	$(document).unbind('keyup.startTrial');
+			    	memPrac = false;
+			    	$("#average").hide();
+					$("#continuousReport").hide();
+			    	showInstruct();
+		    	});
+			} else {
+				$('#average').html("Average Accuracy: " + Math.round(performance) + " percent (average must be at least 80%)<br>If you find that the task is too difficult, please press the <b>Return HIT</b> button.<br><br>Press space to try again.");
+				$('#average').show();
+				$(document).bind('keyup.repTrial', 'space', function(e) { 
+			    	$(document).unbind('keyup.repTrial');
+			    	$("#average").hide();
+			    	$("#continuousReport").hide();
+					currentTrial = -1;
+					currentBlock = 0;
+					memPracticeTrials = [];
+					memPracticeGen();
+					totalTrials = [memPracticeTrials, practiceTrials, genTrials];
+					blockPerf = [];
+					NextTrial();
+				});
+			}
+  		} else {
+  			$('#average').html("Average Accuracy: " + Math.round(performance) + " percent<br><br>Press space to continue.");
+			$('#average').show();
+	  		$(document).bind('keyup.startTrial', 'space', function(e) { 
+		    	$(document).unbind('keyup.startTrial');
+		    	$("#continuousReport").hide();
+		    	if(currentBlock<totalTrials.length-1) {
+		    		showInstruct();
+		    	} else {
+		    		NextTrial();
+		    	}
+		    	
+	    	});
+  		}
+  	} else {
+  		$("#continuousReport").hide();
+  		NextTrial();
+  	}
+}
+
+/* Done with the experiment; wait for comments and for them to hit Save */
+function Done() {
+  	$('#questionnaire').show();
+}
+
+/* Save the data to the server (choose what to save) */
+function SaveData() {
+	/* Turk assignment id written within URL used 
+	for external Turk submission */
+	$('#assignmentId').val(assignmentId);
+	$("#turkSubmit").attr("action", "https://workersandbox.mturk.com/mturk/externalSubmit?assignmentId="+assignmentId);
+
+  	var totalTime = new Date() - startExpTime;
+  	var newDate = new Date();
+  	var curID = (IsOnTurk())? GetAssignmentId() : prompt("Doesn't look like you " + 
+  	"are on Turk, so you're probably testing. Enter an ID to save your data with:", "id");
+  	d = { 
+	    "curID": curID,
+    	"workerID": workerId,
+	    "curTime": newDate.today() + " @ " + newDate.timeNow(),
+    	"userAgent": navigator.userAgent,
+    	"windowWidth": $(window).width(),
+    	"windowHeight": $(window).height(),
+    	"screenWidth": screen.width,
+    	"screenHeight": screen.height,   
+    	"totalTime": totalTime,
+    	"comments": $('#comments').val(),
+    	"trialStruct": totalTrials
+  	};
+  	CompleteList();
+  	SendToServer(workerId, d);
+}
+
+function StartList() {
+    $.ajax({
+    	type: 'POST',
+    	async: false,
+    	url: 'https://mturk.psy.vanderbilt.edu/cgi-bin/startLists.pl',
+    	data: tags
+    });
+}
+
+/* Send completion indication to the server: */
+function CompleteList() {
+  	$.ajax({
+    	type: 'POST',
+    	async: false,
+    	url: 'https://mturk.psy.vanderbilt.edu/cgi-bin/compLists.pl',
+    	data: tags
+    });
+    submitted = true;
+}
+
+/* Send the data to the server as JSON: */
+function SendToServer(id, curData) {
+  	var dataToServer = {
+    	'id': id,
+    	'experimentName': experimentName,
+    	'curData': JSON.stringify(curData)
+  	};
+  	console.log(assignmentId);
+  	$.post("https://mturk.psy.vanderbilt.edu/cgi-bin/save.pl",
+    	dataToServer,
+	    function(data) { 
+	      	document.forms[0].submit();
+	    }
+	).fail(function(data) { 
+	   	document.forms[0].submit();  
+	});
+}
+
+function stopNavigate(){    
+    $(window).off('beforeunload');
+}
+
+$(window).ready(function () {
+	$('a').on('mousedown', stopNavigate);
+    $('a').on('mouseleave', function () {
+           $(window).on('beforeunload', function(){
+                  return 'Are you sure you want to leave? You may not be able to restart the assignment and have to return the HIT.';
+           });
+    });
+    $('#loading').hide();
+});
+
+$(function() {
+  	if (navigator.userAgent.indexOf('MSIE') != -1) {
+    	$('body').html('Unfortunately this HIT does not work in IE. It works in Chrome, Firefox or Safari. Sorry!');
+  	}
+  	if (navigator.userAgent.indexOf('mobile') != -1) {
+    	$('body').html('Unfortunately this HIT is not available for mobile devices. Sorry!');
+  	}
+  	if (navigator.userAgent.indexOf('tablet') != -1) {
+    	$('body').html('Unfortunately this HIT is not available for tablet devices. Sorry!');
+  	}
+});
+
+console.log($(window).width());
+console.log($(window).height());
+console.log(screen.width);
+console.log(screen.height);
+</script>
+
+<noscript>
+	<h1>Warning: Javascript seems to be disabled</h1>
+	<p>This website requires that Javascript be enabled on your browser.</p>
+	<p>Instructions for enabling Javascript in your browser can be found 
+	<a href="http://support.google.com/bin/answer.py?hl=en&answer=23852">here</a><p>
+</noscript>
+
+<div id="test1" class="test"><h2>Thank you! </h2>
+	<hr>
+
+	<h1>How to rotate the central line in the display </h1>
+
+	<p align="center"><img src="static/images/adjust_line_angle.png" style="max-width: 100%;"></p>
+
+	<p> Move the mouse around the fixation point to adjust the angle of the central line, so it matches the angle of the other line. They should be <b>parallel</b>.
+
+	Be as accurate as you can. 
+	To pass this test, <b>your average accuracy must be greater than 95%</b></p>
+
+	<p style='text-align: center'><a href='javascript:StartExperiment()' id='startExperimentButton' class="nav">Start Practice Trials</a>
+		<div id="loading" style='text-align: center'>
+			<p>
+				<img src="static/images/spinner.svg" style="width: 30px; height: 30px">
+			</p>Page elements still loading. Please wait. &nbsp; &nbsp; 
+		</div>
+	</p>
+</div>
+
+<div id="test2" class="test"><h2>Practice:  Memory for 2 items</h2>
+	<hr>
+
+	<p align="center"><img src="static/images/memory_for_2items.png" style="max-width: 100%;"></p>
+
+	<p>Please keep your eyes focused on the central dot throughout each trial, which should take about 4-6 seconds.</p>
+	<p>2 lines will briefly appear in the periphery, too briefly to look at directly, so you will do best if you keep your eyes on the central dot.</p>
+	<p>After a short delay, a circle will appear at one of the line locations.
+	
+	Report the angle of that line from memory by adjusting the angle of the central line.</p>
+	<p><b>Be as accurate as you can, and take your time to respond accurately.</b>  </p>
+	<p>To pass this test, your average accuracy should be above <mark>80%</mark>!</p>
+
+
+	<p style='text-align: center'><a href='javascript:hideInstruct()' id='startTest2' class="nav">Start Practice: Memory for 2 items</a>
+	</p>
+</div>
+
+<div id="test3" class="test"><h2>Practice: Memory for 6 items</h2>
+	<hr>
+
+	<p>You will have 10 practice trials that match the real test. 
+	You will be presented with 6 lines to remember. 
+	Don't worry if you find this more challenging, just do the best you can.
+
+	Try to remember as many items as you can, as precisely as you can. </p>
+
+
+
+	<p style='text-align: center'><a href='javascript:NextTrial()' id='startTest3' class="nav">Start Practice: Memory for 6 items</a>
+	</p>
+</div>
+
+<div id="actual" class="test"><h2>Actual Test: Memory for 6 items</h2>
+	<hr>
+
+	<p>This is the actual experiment.
+	Do the best you can!</p>
+
+	<p>You will receive a total of 106 trials, which should take about 12 minutes.</p>
+
+	<h1>Reminder:</h1>
+	<p>Try to remember as many items as possible, and respond as accurately as possible. </p>
+	<p>Keep your eyes on the central dot while doing this task.</p>
+
+
+	<p style='text-align: center'><a href='javascript:NextTrial()' id='startActual' class="nav">Start Actual Test: Memory for 6 items</a>
+	</p>
+</div>
+
+<!-- Start form here to capture comments -->
+<form id="turkSubmit" action="https://workersandbox.mturk.com/mturk/externalSubmit" method="post">
+
+<div id="subject" class="page">
+	<h2>Subject Information</h2>
+    <hr>
+
+    <p>Please provide some general demographic information. The information collected for this study will be maintained confidentially, and will be used only for the purposes of this study.</p>
+
+    		<!-- beginning of a question -->
+    		<div class="row question">
+                <div>
+                    <b>Age:</b>
+                </div>
+                <div>
+                	<input type="hidden" id="age" name="age" value="0"><label for="age"></label>
+					<input id="ageInput" type="text" onchange="ChangeAgeInput()"/>
+					<br>
+                    <input type="radio" id="noReport" name="noReport" value="1"><label for="noReport"> I choose not to report </label>
+                </div>
+            </div>
+            <!-- end of a question -->
+            <br>
+            <!-- beginning of a question -->
+            <div class="row question">
+                <div>
+                    <b>Gender:</b>
+                </div>
+                <div>
+                    <select id="gender" name="gender">
+                    	<option value="0" SELECTED>Choose One</option>
+                        <option value="1">Male</option>
+                        <option value="2">Female</option>
+                        <option value="3">I choose not to report</option>
+                    </select>
+                </div>
+            </div>
+            <!-- end of a question -->
+            <br>
+            <!-- beginning of a question -->
+            <div class="row question">
+                <div>
+                    <b>Ethnicity:</b>
+                </div>
+                <div>
+                    <select id="ethnicity" name="ethnicity">
+                    	<option value="0" SELECTED>Choose One</option>
+                        <option value="1">American Indian/Alaska Native</option>
+                        <option value="2">Asian</option>
+                        <option value="3">Native Hawaiian or Other Pacific Islander</option>
+                        <option value="4">Black or African American</option>
+                        <option value="5">White</option>
+                        <option value="6">Hispanic</option>
+                        <option value="7">More Than One Race</option>
+                        <option value="8">Unknown/I choose not to report</option>
+                    </select>
+                </div>
+            </div>
+            <!-- end of a question -->
+            <br>
+            <!-- beginning of a question -->
+            <div class="row question">
+                <div>
+                    <b>Education:</b>
+                </div>
+                <div>
+                    <select id="education" name="education">
+                    	<option value="0" SELECTED>Choose One</option>
+                        <option value="1">No diploma</option>
+                        <option value="2">High school diploma</option>
+                        <option value="3">Trade school</option>
+                        <option value="4">Some college</option>
+                        <option value="5">College Bachelor's degree</option>
+                        <option value="6">Advanced or professional degree</option>
+                        <option value="7">I choose not to report</option>
+                    </select>
+                </div>
+            </div>
+            <!-- end of a question -->
+
+    <br>
+
+    <hr>
+
+    <div class="instructionsnav">
+        <div class="row">
+            <div>
+                <button type="button" id="subject" value="subject" class="nav" onClick="SpecsScreen();">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="specifications" class="page">
+	<h2>Viewing Condition Information</h2>
+    <hr>
+
+    <p style='text-align: center'><a href='javascript:ClearAll()' id='clearAllButton' class="nav">Clear All</a>
+    <div id="card" class="card">
+	    <div>
+	    Please adjust the bar on the screen using the arrow keys to match the length of a credit card.
+	    </div>
+	 
+	 	<div style='text-align: center'>
+	    <canvas id="rect" height="100" style="min-width:100%">
+	    Your browser does not support the HTML5 canvas tag.
+	    </canvas>
+	    </div>
+    </div>
+
+	<div id="viewD" class="viewD">
+	<p>Please choose your approximate viewing distance from the diagram. Do <b>NOT</b> select an option if you do not know.</p>
+
+	<input id="viewingDistance" type="radio" name="VD" value="0" checked="checked" style="display:none">
+
+	<table align="center" style="max-width:100%">
+	    <tr>
+	        <td>
+	        	<label for="VD18">
+	            	<img src="static/images/VD18.png" class="VDanswer" style="max-width:100%; height:auto; width:auto">
+	            </label>
+	        </td>
+	        <td>
+	        	<label for="VD22">
+	            	<img src="static/images/VD22.png" class="VDanswer" style="max-width:100%; height:auto; width:auto">
+	            </label>
+	        </td>
+	        <td>
+	        	<label for="VD26">
+	        		<img src="static/images/VD26.png" class="VDanswer" style="max-width:100%; height:auto; width:auto">
+	        	</label>
+	        </td>
+	    </tr>
+	    <tr>
+	        <td style="text-align:center">
+	            <input type="radio" id="VD18" name="VD" value="1">
+	        </td>
+	        <td style="text-align:center">
+	            <input type="radio" id="VD22" name="VD" value="2">
+	        </td>
+	        <td style="text-align:center">
+	            <input type="radio" id="VD26" name="VD" value="3">
+	        </td>
+	    </tr>
+	</table>
+	</div>
+
+    <hr>
+
+    <div id="cardNext" class="card">
+        <div class="row">
+            <div>
+                <button type="button" id="cardNext" value="cardNext" class="nav" onClick="CardNext();">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
+	<div id="SpecsBack" class="card">
+        <div class="row">
+            <div>
+                <button type="button" id="specsBack" value="specsBack" class="nav" onClick="SpecsBack();">
+                    Back
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="applySpec" class="viewD">
+        <div class="row">
+            <div>
+                <button type="button" id="specsNext" value="specsNext" class="nav" onClick="ApplySpecs();">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cardBack" class="viewD">
+        <div class="row">
+            <div>
+                <button type="button" id="cardBack" value="cardBack" class="nav" onClick="CardBack();">
+                    Back
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Basic structure for a trial: -->
+<div id="showTrial">
+	<canvas id="fixationShow" class="fixation"> Your browser does not support the HTML5 canvas tag.</canvas>
+	<div id="elements">
+		<div id="item1" class="array"><img id="gaborShow1" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item2" class="array"><img id="gaborShow2" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item3" class="array"><img id="gaborShow3" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item4" class="array"><img id="gaborShow4" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item5" class="array"><img id="gaborShow5" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item6" class="array"><img id="gaborShow6" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item7" class="array"><img id="gaborShow7" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item8" class="array"><img id="gaborShow8" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+	</div>
+	<div id="pressKeyShow" class="botText"><br><br>Press space to begin.</div>
+</div>
+
+<!-- Structure for continuous report after the trial: -->
+<div id="continuousReport">
+	<canvas id="fixationCont" class="fixation"> Your browser does not support the HTML5 canvas tag.</canvas>
+	<div id="continuousStimulus">
+		<img id="gaborCont" src="static/images/gaborCont.png" alt="response" class="gabor" width="100">
+	</div>
+	<div id="targetSelect">
+		<canvas id="circSelect" width="200" height="200"> Your browser does not support the HTML5 canvas tag.</canvas>
+	</div>
+	<!-- <div id="feedback">
+	Congratulations! You have completed of the experiment.
+	Average Accuracy:
+	Bonus points:
+	</div> -->
+	<div id="motorPrac" class="array">
+		<img src="static/images/gaborCont.png" class="gabor" width="100">
+	</div>
+	<!-- feedback -->
+	<div id="feedback" class="botText">Accuracy: 10 percent (average must be at least 95%)<br><br>Press space to continue.</div>
+	<div id="average" class="botText">Average Accuracy: 10 percent<br><br>Press space to continue.</div>
+	<div id="pressKeyCont" class="botText"><br><br>Press space to begin.</div>
+	<div id="pressKeySub" class="botText"><br><br>Press space to submit.</div>
+</div>
+
+<div id="questionnaire" class="page">
+	<h2>Post-experiment questionnaire</h2>
+    <hr>
+
+    <p>
+    Congratuations, you are finished! You will be eligible for payment once you answer the following questions.
+    </p>
+
+	<!-- beginning of a question -->
+    <div class="row question">
+        <div>
+            On a scale of 1-10 (where 10 is the most engaged), please rate how <b>ENGAGING</b> you found the visual memory task:
+        </div>
+        <div>
+            <select id="engagement" name="engagement">
+                <option value="10">10 - Very engaging</option>
+                <option value="9">9</option>
+                <option value="8">8</option>
+                <option value="7">7</option>
+                <option value="6">6</option>
+                <option value="5" SELECTED>5 - Moderately</option>
+                <option value="4">4</option>
+                <option value="3">3</option>
+                <option value="2">2</option>
+                <option value="1">1</option>
+                <option value="0">0 - Not engaged</option>
+            </select>
+        </div>
+    </div>
+    <!-- end of a question -->
+
+    <br>
+
+    <!-- beginning of a question -->
+    <div class="row question">
+        <div>
+            On a scale of 1-10 (where 10 is the most difficult), please rate how <b>DIFFICULT</b> you found the visual memory task:
+        </div>
+        <div>
+            <select id="difficulty" name="difficulty">
+                <option value="10">10 - Very difficult</option>
+                <option value="9">9</option>
+                <option value="8">8</option>
+                <option value="7">7</option>
+                <option value="6">6</option>
+                <option value="5" SELECTED>5 - Moderately difficult</option>
+                <option value="4">4</option>
+                <option value="3">3</option>
+                <option value="2">2</option>
+                <option value="1">1</option>
+                <option value="0">0 - Not difficult at all</option>
+            </select>
+        </div>
+    </div>
+    <!-- end of a question -->
+
+    <br>
+
+    <div id="doneText"><br><b>Any comments for us?</b><br><br>
+		<textarea name="comments" id="comments" style="width: 300px; height: 200px"></textarea><br><br>
+	</div>
+
+	<hr>
+
+    <div class="instructionsnav">
+        <div class="row">
+            <div>
+                <button type="button" id="debriefNext" value="debriefNext" class="nav" onClick="DebriefScreen();">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" name="assignmentId" id="assignmentId" value="">
+<input type="submit" value="Submit" name="submitButton" id="submitButton" style="display:none">
+<!--
+ submit to turk
+ https://workersandbox.mturk.com/mturk/externalSubmit
+ https://www.mturk.com/mturk/externalSubmit
+-->
+</form>
+
+<div id="debrief">
+	<h2>Debriefing</h2>
+    <hr>
+
+    <p>
+    Thank you for your participation in our study! Your anonymous data makes an important contribution to our understanding of human visual working memory.
+	</p>
+
+	<p>
+	If you have any questions about this research, you may contact the experimenter:
+	</p>
+
+	<b>ftonglab@gmail.com</b>
+
+	<p>
+	To complete the HIT, simply press the button below. Upon pressing the button, the page should refresh to load the next HIT. Even if the next HIT remains loading, it should be noted that this HIT has been submitted.
+    </p>
+
+    <hr>
+    <br>
+
+	<!-- Screen for collecting comments when they are done: -->
+	<a href="javascript:SaveData()" id="timSubmit" class="nav">Submit</a>
+</div>
+
+</body>
+</html>

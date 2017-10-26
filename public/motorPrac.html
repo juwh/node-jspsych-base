@@ -1,0 +1,198 @@
+<!doctype html>
+<html>
+<script src="static/lib/jquery-3.0.0.min.js"></script>
+<style>
+/* Continuous report screen parameters */
+#continuousReport {
+	/* Encompass entire window width and 
+	adjust to size changes */
+	width: 100%;
+	/* Higher percentage for max height expands 
+	vertical size and introduces scrolling */
+	max-height: 80%;
+	/* rgb chosen as the same color background as
+	the gabor and bar elements */
+	background: rgb(128,128,128);
+	margin: 40px auto;
+	/* relative positioning as the window is 
+	within 'body' */
+	position: relative;
+	display: none;
+}
+
+/* Continuous stimulus parameters */
+#continuousStimulus {
+	/* absolute positions element within 
+	continuousReport */
+	position: absolute; 
+	display: none;
+}
+
+#motorPrac {
+	/* absolute positions element within 
+	continuousReport */
+	position: absolute;
+	display: none;
+}
+</style>
+
+<script>
+$(window).resize(function() {
+	/* if the experiment hasn't started, 
+	currentTrial == -1 and startExpTime == null, 
+	locations of stimulus arrays, continuous stimulus, 
+	continuousReport and showTrial window sizes 
+	can not be adjusted */
+	if (startExpTime != null) {
+		/* adjust center x,y values based on new window resolution */
+		centerX = $(window).width()/2, centerY = $(window).height()/2;
+		/* adjust continuousReport window margin to be centered */
+	  	$("#continuousReport").css("margin-top", (($(window).height())/2) - ($("#continuousReport").height())/2);
+	  	/* adjust showTrial window margin to be centered */
+	  	$("#showTrial").css("margin-top", (($(window).height())/2) - ($("#showTrial").height())/2);
+	  	/* adjust continuousStimulus element left,top values to be centered */
+	  	$("#continuousStimulus").css("top", ($("#continuousReport").height() - itemDim)/2);
+		$("#continuousStimulus").css("left", ($("#continuousReport").width() - itemDim)/2);
+		/* move array elements and cue by changing top,left values */
+	  	AdjustElements(totalTrials[currentBlock][currentTrial]);
+	}
+});
+
+/* Apply new environment conditions to item dimensions and fixation */
+function UpdateElements() {
+	oppLength = horzLength/2;
+	totalVisAngle = 2 * convertTo("degs", Math.atan(oppLength/distFromScreen));
+	pixelsPerDegree = horzRes/totalVisAngle;
+	itemRadius = Math.floor(pixelsPerDegree);
+	itemDim = 2 * itemRadius;
+	eccenDist = eccenAngle * pixelsPerDegree;
+	$(".gabor").css("width", itemDim);
+
+	var c = document.getElementById("fixationShow");
+	var d = document.getElementById("fixationCont");
+	DrawFixation(c);
+	DrawFixation(d);
+
+	$(".fixation").css("margin-top", -itemRadius);
+	$(".fixation").css("margin-left", -itemRadius);
+	$(".fixation").show();
+}
+
+function MotorPractice() {
+	$('#instructions').hide();
+	mPracticeTrials = mPracticeGen();
+	mPracSet(mPracticeTrials, currentTrial_mPrac);
+}
+
+function mPracticeGen() {
+	var numTargets = 1;
+	var prac = 1;
+	var stimtype = 2;
+
+	var genStruct = [];
+	var itemOrients = [];
+	var curAngles = [];
+	var curCoordinates = [];
+	var target;
+	var startAngle;
+
+	for (var i=0; i<numTrials_mPrac; i++) {
+		startAngle = Math.floor(Math.random()*360);
+	    itemOrients.push(Math.floor(Math.random()*360));
+	    curAngles = randSpacings(numTargets, startAngle);
+	    curCoordinates = toCoordinates(curAngles);
+	    target = Math.floor(Math.random() * numTargets);
+	    genStruct.push({'prac': prac,
+						'trial': i, 
+		                'stimtype': stimtype, 
+		                'setSize': numTargets,
+						'targetIndex': target,
+						'items': itemOrients,
+						'randAngles': curAngles,
+						'randSpacings': curCoordinates
+					});
+	    itemOrients = [];
+	    curCoordinates = [];
+	}
+	genStruct = Shuffle(genStruct);
+	return genStruct;
+}
+
+function mPracSet(trialStruct, index) {
+	if (trialStruct.stimtype == 1) {
+		ChangeToBar();
+	}
+	if (trialStruct.stimtype == 2) {
+		ChangeToGabor();
+	}
+	$('#motorPrac').css("top", $("#continuousReport").height()/2 - trialStruct[index].randSpacings[0].y - itemDim);
+	$('#motorPrac').css("left", $(window).width()/2 + trialStruct[index].randSpacings[0].x);
+	ccwRotate(trialStruct[index].items[0], '#motorPrac');
+	$('#motorPrac').show();
+	ShowContinuousReport(trialStruct[index]);
+}
+
+function mPracNext() {
+	currentTrial_mPrac++;
+  	if (currentTrial_mPrac>=numTrials_mPrac) {
+    	mPracticeFeedbackReport();
+  	} else {
+  		mPracSet(mPracticeTrials, currentTrial_mPrac);
+  	}
+}
+
+function mPracticeFeedbackReport() {
+	var perfSum = 0;
+	var performance;
+	for (var i = 0; i<mPracPerf.length; i++) {
+		perfSum += mPracPerf[i];
+	}
+	performance = perfSum/mPracPerf.length;
+	console.log(performance);
+	if (performance > performanceMin) {
+		console.log("Congratulations!");
+		motorPrac = false;
+		NextTrial();
+	} else {
+		currentTrial_mPrac = 0;
+		mPracticeTrials = [];
+		MotorPractice();
+	}
+}
+</script>
+
+<!-- Basic structure for a trial: -->
+<div id="showTrial">
+	<canvas id="fixationShow" class="fixation"> Your browser does not support the HTML5 canvas tag.</canvas>
+	<div id="elements">
+		<div id="item1" class="array"><img id="gaborShow1" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item2" class="array"><img id="gaborShow2" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item3" class="array"><img id="gaborShow3" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item4" class="array"><img id="gaborShow4" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item5" class="array"><img id="gaborShow5" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item6" class="array"><img id="gaborShow6" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item7" class="array"><img id="gaborShow7" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+		<div id="item8" class="array"><img id="gaborShow8" src="static/images/gaborCont.png" class="gabor" width="100"></div>
+	</div>
+	<!--<div id="pressKey">Click anywhere to start this trial.</div>
+		-->
+</div>
+
+<!-- Structure for continuous report after the trial: -->
+<div id="continuousReport">
+	<canvas id="fixationCont" class="fixation"> Your browser does not support the HTML5 canvas tag.</canvas>
+	<div id="continuousStimulus">
+		<img id="gaborCont" src="static/images/gaborCont.png" alt="response" class="gabor" width="100">
+	</div>
+	<!-- <div id="feedback">
+	Congratulations! You have completed of the experiment.
+	Average Accuracy:
+	Bonus points:
+	</div> -->
+	<div id="motorPrac" class="array">
+		<img src="static/images/gaborCont.png" class="gabor" width="100">
+	</div>
+</div>
+
+</body>
+</html>

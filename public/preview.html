@@ -1,0 +1,118 @@
+<!-- 
+	The ad.html has a very specific format.
+
+	Really there are two "ads" contained within this file.
+
+	The first ad displays to participants who are browsing
+	the Amazon Mechanical Turk site but have not yet accepted
+	your hit.  
+
+	The second part of the ad display after the person selected
+	"Accept HIT" on the Amazon website.  This will reload the
+	ad and will display a button which, when clicked, will pop
+	open a new browser window pointed at your local psiTurk
+	server (assuming it is running and accessible to the Internet).
+
+	See comments throughout for hints
+
+-->
+<html>
+	<title>TongLab: Turk</title>
+	<link rel=stylesheet href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" type="text/css">
+	<link rel="icon" type="image/gif" href="/favicon.gif">
+	<link rel=stylesheet href="/css/preview.css" type="text/css">
+	<script src="/lib/jquery-3.0.0.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<script src="/js/preview.js"></script>
+	<script src="/lib/TimTurkTools.js"></script>
+	<body>
+		<div class="container">
+			<div class="row">
+				<div class="col-xs-12 col-sm-5 col-md-4">
+					<img class="img-responsive" src="/images/university.png"/>
+				</div>
+				<div class="col-xs-12 col-sm-7 col-md-8">
+					<div id="preview">
+						<!--
+								If assignmentid is "ASSIGNMENT_ID_NOT_AVAILABLE"
+								it means the participant has NOT accepted your hit.
+								This should display the typical advertisement about
+								your experiment: who can participate, what the
+								payment is, the time, etc...
+
+							-->
+
+						<h1>Participate in a study on visual short-term memory!</h1>
+						<p>
+							You are invited to participate in a research project conducted by Dr. Frank Tong from the Department of Psychology at Vanderbilt University. We are interested in learning about people's ability to hold visual information actively in mind for a brief period of time, an ability called <i>visual working memory</i>.
+						</p>
+						<p>
+							In this study, you will be briefly shown arrays of randomly tilted lines, and after a short delay, you will be asked to report the angle of a particular line from memory. <b>Respond as accurately as you can.</b>
+						</p>
+						<p>
+							You will receive some practice trials to learn the task. You will need to perform the task accurately to continue to the main experiment. This experiment will take about <mark>15-20 minutes</mark>, and you will be paid after completing the full experiment.
+						</p>
+						<div class="alert alert-danger">
+							You can opt to quit performing this HIT at any time without penalty, <strong>but you will not be paid and will not be eligible to participate in this HIT again.</strong>
+						</div>
+						<p>
+							To participate, you must be at least 18 years of age, have normal healthy vision either with or without corrective lenses, and reside in the United States. You may choose to provide information about your age, gender, ethnicity, and level of education. The information collected for this study will be maintained confidentially, and will be used only for the purposes of this study.
+						</p>
+						<p>
+							If you have any questions about this study, please contact: <mark>ftonglab@gmail.com</mark>
+						</p>
+						<p>
+							By accepting this HIT, you are consenting to the terms of the experiment explained above and voluntarily agree to participate in this study.
+						</p>
+					</div>
+					<div id="accepted">
+						<!--
+								OTHERWISE
+								If assignmentid is NOT "ASSIGNMENT_ID_NOT_AVAILABLE"
+								it means the participant has accepted your hit.
+								You should thus show them instructions to begin the
+								experiment ... usually a button to launch a new browser
+								window pointed at your server.
+
+								It is important you do not change the code for the
+								openwindow() function below if you want you experiment
+								to work.
+							-->
+						<h1>Thank you for accepting this HIT!</h1>
+						<p>
+							By clicking the following URL link, you will be taken to the experiment,
+							including complete instructions.
+						</p>
+
+						<div class="alert alert-warning">
+							<b>Warning</b>: Please disable pop-up/ad blockers before continuing.
+						</div>
+
+						<button type="button" class="btn btn-primary" onClick="openwindow();">
+							Open Experiment
+						</button>
+					</div>
+					<div id="error">
+						<!--
+								REPEAT
+								If the user is found to be returning to the HIT after accepting, the participant will no longer be able to begin the experiment and will be asked to return the HIT.
+							-->
+						<h1>Sorry, there was an error</h1>
+						<p>
+							Sorry, our records indicate that you have attempted to complete this HIT, but quit before finishing. Because this is a Psychology experiment, you can only complete this HIT once. Please return the HIT so someone else can perform the experiment.
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<noscript>
+			<h1>Warning: Javascript seems to be disabled</h1>
+			<p>This website requires that Javascript be enabled on your browser.</p>
+			<p>Instructions for enabling Javascript in your browser can be found 
+			<a href="http://support.google.com/bin/answer.py?hl=en&answer=23852">here</a><p>
+		</noscript>
+	</body>
+</html>
+
+

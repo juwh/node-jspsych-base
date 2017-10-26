@@ -1,0 +1,26 @@
+body {
+    padding:0px;
+    margin: 0px;
+    background-color: white;
+    color: black;
+    font-weight: 300;
+    font-size: 13pt;
+}
+
+.container {
+    padding: 10%;
+    padding-top: 8%;
+    background: white;
+}
+
+#preview {
+    display: none;
+}
+
+#error {
+    display: none;
+}
+
+#full {
+    display: none;
+}
